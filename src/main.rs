@@ -1,4 +1,4 @@
-use chrono::{Datelike, Utc};
+use chrono::{Local};
 use fancy_regex::Regex;
 use std::fs::{self, File};
 use std::io::{self, Write};
@@ -34,59 +34,49 @@ fn main() -> io::Result<()> {
         file = Box::new(io::stdout());
     }
     //rust cookbook
+    //读取输入的目录
     let mut own_apps = Vec::new();
     for entry in fs::read_dir(opt.input)? {
         let entry = entry?;
         let path = entry.path();
         if path.is_dir() {
-            let mut dir = path.to_str().unwrap().to_string();
-            dir.push('\n');
-            file.write_all(dir.as_bytes())?;
             let replaced_path = replace_slash(path.to_str().unwrap());
 
             own_apps.push(replaced_path);
         }
     }
-    let now = Utc::now();
-    println!("{},{},{}", now.year_ce().1, now.month(), now.day());
+
+    //获取当前时间
+    let now = Local::now();
+    let time_now = format!("at {:#?}\n", now);
+    file.write_all(time_now.as_bytes())?;
+    //获取全部APP
     let apps = from_reg()?;
+
     let mut sub_apps = vec![];
     //println!("{:?}",apps);
-    let mut count = 0;
+    let mut count = 1;
+
+    //剔除相同的APP
     for item in apps {
-        //println!("{:#?}",item);
-        //println!("{}\t{}",remove_quotations(&item.name),item.install_path.to_str().unwrap());
+        let display_res = format!("{}: {}\t{}\n",count,item.name,item.install_path.to_str().unwrap());
+        file.write_all(display_res.as_bytes())?;
         if item.install_path.starts_with("D:\\APP\\") {
             //println!("{}",item.install_path.to_str().unwrap());
             sub_apps.push(short_path(item.install_path.to_str().unwrap()));
         }
-
-        /*for path in &own_apps{
-            if   && !item.install_path.starts_with(path){
-                println!("{}",item.name);
-            }
-        }*/
+        count += 1;
     }
+    file.write_all(b"-----------------------\n")?;
 
-    //println!("{:?}",sub_apps);
-    println!("own_app:{:?}", own_apps.len());
-    println!("sub_app:{}", sub_apps.len());
-    //println!("{:?}", sub_apps);
-    for item in &sub_apps{
-        println!("{}",item);
-    }
-    println!("--------");
-
-    //TODO: 写入列表
     for item in own_apps {
         if !sub_apps.contains(&item) {
-            println!("{}",&item[7..item.len()]);
+            //println!("{}",&item[7..item.len()]);
+            let display_res = format!("{}: {}\t{}\n",count,item[7..item.len()].to_string(),item);
+            file.write_all(display_res.as_bytes())?;
             count += 1;
         }
     }
-    println!("find:{count}");
-
-    //TODO： 根据命令行参数输出为文件或者stdout
 
     Ok(())
 }
@@ -101,7 +91,6 @@ fn replace_slash(path: &str) -> String {
     re.replace_all(path, r"\").to_string()
 }
 
-
 fn short_path(path: &str) -> String {
     if path.starts_with("D:\\APP\\Steam\\steamapps") {
         //println!("{}",path);
@@ -115,6 +104,7 @@ fn short_path(path: &str) -> String {
         Ok(None) => {String::from("")},
     }
 }
+
 
 fn from_reg() -> io::Result<Vec<AppInfo>> {
     let mut apps = Vec::new();
@@ -153,21 +143,6 @@ fn from_reg() -> io::Result<Vec<AppInfo>> {
             Err(_) => {}
         };
         apps.push(result);
-        /*
-        for (name,value) in app_info.enum_values().map(|x| x.unwrap()){
-            if name == "DisplayName"{
-                result.name = value.to_string();
-            }
-            if name == "UninstallString"{
-
-                // 如果有install location，就用install location
-                // 如果没有，就用uninstall string
-                let install_location = remove_quotations(&value.to_string());
-                result.install_path = PathBuf::from(replace_slash(&install_location));
-            }
-
-        }
-        */
     }
     for app in app32.enum_keys().map(|x| x.unwrap()) {
         let app_info = app32.open_subkey(app)?;
