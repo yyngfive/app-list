@@ -17,5 +17,8 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: Build
-      run: cargo build --verbose --release --target target.x86_64-pc-windows-gnu
+      run: | 
+        rustup target add x86_64-pc-windows-gnu
+        rustup toolchain install stable-x86_64-pc-windows-gnu
+        cargo build --verbose --release --target target.x86_64-pc-windows-gnu
 
