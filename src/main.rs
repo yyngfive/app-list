@@ -39,10 +39,8 @@ fn main() -> io::Result<()> {
 
     let mut own_apps = Vec::new();
     let have_input:bool;
-    let own_path:&str;
     match opt.input {
         Some(input) => {
-            own_path = input.to_str();
             for entry in fs::read_dir(input)? {
                 let entry = entry?;
                 let path = entry.path();
@@ -74,7 +72,7 @@ fn main() -> io::Result<()> {
             item.install_path.to_str().unwrap()
         );
         file.write_all(display_res.as_bytes())?;
-        if item.install_path.starts_with(own_path) {
+        if item.install_path.starts_with("D:\\APP") {
             //println!("{}",item.install_path.to_str().unwrap());
             sub_apps.push(short_path(item.install_path.to_str().unwrap()));
         }
@@ -230,4 +228,3 @@ fn from_reg() -> io::Result<Vec<AppInfo>> {
     Ok(apps)
 }
 
-fn from_input() {}
