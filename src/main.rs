@@ -1,4 +1,4 @@
-use chrono::{Local};
+use chrono::Local;
 use fancy_regex::Regex;
 use std::fs::{self, File};
 use std::io::{self, Write};
@@ -12,7 +12,7 @@ use winreg::RegKey;
 struct Opt {
     // 接收自定义软件安装路径目录（必选，因为我的个人习惯）
     #[structopt(short, long, parse(from_os_str))]
-    input: PathBuf,
+    input: Option<PathBuf>,
     #[structopt(short, long, parse(from_os_str))]
     output: Option<PathBuf>,
 }
@@ -33,23 +33,27 @@ fn main() -> io::Result<()> {
     } else {
         file = Box::new(io::stdout());
     }
+
     //rust cookbook
     //读取输入的目录
-    let mut own_apps = Vec::new();
-    for entry in fs::read_dir(opt.input)? {
-        let entry = entry?;
-        let path = entry.path();
-        if path.is_dir() {
-            let replaced_path = replace_slash(path.to_str().unwrap());
 
-            own_apps.push(replaced_path);
-        }
+    let mut own_apps = Vec::new();
+    let have_input:bool;
+    match opt.input {
+        Some(input) => {
+            for entry in fs::read_dir(input)? {
+                let entry = entry?;
+                let path = entry.path();
+                if path.is_dir() {
+                    let replaced_path = replace_slash(path.to_str().unwrap());
+                    own_apps.push(replaced_path);
+                }
+            }
+            have_input = true;
+        },
+        None => have_input = false,
     }
 
-    //获取当前时间
-    let now = Local::now();
-    let time_now = format!("at {:#?}\n", now);
-    file.write_all(time_now.as_bytes())?;
     //获取全部APP
     let apps = from_reg()?;
 
@@ -57,9 +61,16 @@ fn main() -> io::Result<()> {
     //println!("{:?}",apps);
     let mut count = 1;
 
+    file.write_all(b"Index, Name, Path\n")?;
+
     //剔除相同的APP
     for item in apps {
-        let display_res = format!("{}: {}\t{}\n",count,item.name,item.install_path.to_str().unwrap());
+        let display_res = format!(
+            "{}, {}, {}\n",
+            count,
+            item.name,
+            item.install_path.to_str().unwrap()
+        );
         file.write_all(display_res.as_bytes())?;
         if item.install_path.starts_with("D:\\APP\\") {
             //println!("{}",item.install_path.to_str().unwrap());
@@ -67,16 +78,23 @@ fn main() -> io::Result<()> {
         }
         count += 1;
     }
-    file.write_all(b"-----------------------\n")?;
 
-    for item in own_apps {
-        if !sub_apps.contains(&item) {
-            //println!("{}",&item[7..item.len()]);
-            let display_res = format!("{}: {}\t{}\n",count,item[7..item.len()].to_string(),item);
-            file.write_all(display_res.as_bytes())?;
-            count += 1;
+    if have_input == true {
+        for item in own_apps {
+            if !sub_apps.contains(&item) {
+                //println!("{}",&item[7..item.len()]);
+                let display_res =
+                    format!("{}, {}, {}\n", count, item[7..item.len()].to_string(), item);
+                file.write_all(display_res.as_bytes())?;
+                count += 1;
+            }
         }
     }
+
+    //获取当前时间
+    let now = Local::now();
+    let time_now = format!("at {:#?}\n", now);
+    file.write_all(time_now.as_bytes())?;
 
     Ok(())
 }
@@ -101,10 +119,9 @@ fn short_path(path: &str) -> String {
     match re.find(path) {
         Ok(Some(mat)) => path[mat.start()..mat.end()].to_string(),
         Err(_) => panic!("Oh!"),
-        Ok(None) => {String::from("")},
+        Ok(None) => String::from(""),
     }
 }
-
 
 fn from_reg() -> io::Result<Vec<AppInfo>> {
     let mut apps = Vec::new();
@@ -186,8 +203,8 @@ fn from_reg() -> io::Result<Vec<AppInfo>> {
         };
         match app_info.get_value("InstallLocation") {
             Ok(value) => {
-                if value == ""{
-                    println!("cu{}",result.name);
+                if value == "" {
+                    println!("cu{}", result.name);
                 }
                 let path: String = value;
                 let install_location = remove_quotations(&path);
