@@ -39,8 +39,10 @@ fn main() -> io::Result<()> {
 
     let mut own_apps = Vec::new();
     let have_input:bool;
+    let own_path:&str;
     match opt.input {
         Some(input) => {
+            own_path = input.to_str();
             for entry in fs::read_dir(input)? {
                 let entry = entry?;
                 let path = entry.path();
@@ -72,7 +74,7 @@ fn main() -> io::Result<()> {
             item.install_path.to_str().unwrap()
         );
         file.write_all(display_res.as_bytes())?;
-        if item.install_path.starts_with("D:\\APP\\") {
+        if item.install_path.starts_with(own_path) {
             //println!("{}",item.install_path.to_str().unwrap());
             sub_apps.push(short_path(item.install_path.to_str().unwrap()));
         }
@@ -110,6 +112,7 @@ fn replace_slash(path: &str) -> String {
 }
 
 fn short_path(path: &str) -> String {
+    //TODO: 更加通用的处理方式
     if path.starts_with("D:\\APP\\Steam\\steamapps") {
         //println!("{}",path);
         return path.to_string();
